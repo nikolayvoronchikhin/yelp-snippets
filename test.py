@@ -1,0 +1,260 @@
+
+"""Tests for Yelp snippet creation.
+
+These tests are meant to be run using nosetests.
+"""
+
+
+import snippets
+
+
+class TestSingleSentence(object):
+    def test_single_word_query(self):
+        doc = 'I really love deep dish pizza.'
+        query = 'pizza'
+        snippet = snippets.highlight_doc(doc, query)
+        assert snippet == 'I really love deep dish [[HIGHLIGHT]]pizza[[ENDHIGHLIGHT]].'
+
+
+    def test_multi_word_query(self):
+        doc = 'I really love deep dish pizza.'
+        query = 'deep dish pizza'
+        snippet = snippets.highlight_doc(doc, query)
+        assert snippet == 'I really love [[HIGHLIGHT]]deep dish pizza[[ENDHIGHLIGHT]].'
+
+    def test_multiple_query_matches_1(self):
+        doc = 'Their speciality pizza is deep dish pizza.'
+        query = 'deep dish pizza'
+        snippet = snippets.highlight_doc(doc, query)
+        assert snippet == 'Their specialty [[HIGHLIGHT]]pizza[[ENDHIGHLIGHT]] is [[HIGHLIGHT]]deep dish pizza[[ENGHIGHLIGHT]].'
+
+    def test_multiple_query_matches_2(self):
+        doc = 'pizza pepperoni olive pizza olive pizza'
+        query = 'pepperoni olive pizza'
+        snippet = snippets.highlight_doc(doc, query)
+        assert snippet == '[[HIGHLIGHT]]pizza[[ENDHIGHLIGHT]] [[HIGHLIGHT]]pepperoni olive pizza[[ENDHIGHLIGHT]] [[HIGHLIGHT]]olive pizza[[ENDHIGHLIGHT]].'
+
+
+class TestCaseSensitivity(object):
+    def test_mixed_doc(self):
+        doc = 'Pepperoni Pizza is good pizza.'
+        query = 'pepperoni pizza'
+        snippet = snippets.highlight_doc(doc, query)
+        assert snippet == '[[HIGHLIGHT]]Pepperoni Pizza[[ENDHIGHLIGHT]] is good [[HIGHLIGHT]]pizza[[ENDHIGHLIGHT]].'
+
+    def test_mixed_query(self):
+        doc = 'pepperoni pizza is good pizza.'
+        query = 'pEppeRonI pIzZa'
+        snippet = snippets.highlight_doc(doc, query)
+        assert snippet == '[[HIGHLIGHT]]pepperoni pizza[[ENDHIGHLIGHT]] is good [[HIGHLIGHT]]pizza[[ENDHIGHLIGHT]].'
+
+    def test_mixed_both(self):
+        doc = 'pEpPeRoNi PiZzA'
+        query = 'PePpErOnI pIzZa'
+        snippet = snippets.highlight_doc(doc, query)
+        assert snippet == '[[HIGHLIGHT]]pEpPeRoNi PiZzA[[ENDHIGHLIGHT]]'
+
+class TestCustomTags(object):
+    def test_open_tag(self):
+        doc = 'I eat sushi.'
+        query = 'sushi'
+        snippet = snippets.highlight_doc(doc, query, opentag='<highlight>')
+        assert snippet == 'I eat <highlight>sushi[[ENDHIGHLIGHT]].'
+
+    def test_close_tag(self):
+        doc = 'I eat sushi.'
+        query = 'sushi'
+        snippet = snippets.highlight_doc(doc, query, closetag='</highlight>')
+        assert snippet == 'I eat [[HIGHLIGHT]]sushi</highlight>.'
+
+    def test_both_tags(self):
+        doc = 'I eat sushi.'
+        query = 'sushi'
+        snippet = snippets.highlight_doc(doc, query, opentag='<highlight>', closetag='</highlight>')
+        assert snippet == 'I eat <highlight>sushi</highlight>.'
+
+
+class TestMaxChars(object):
+    #TODO
+    pass
+
+class TestMaxSents(object):
+    #TODO
+    pass
+
+class TestMaxCharsAndSents(object):
+    #TODO
+    pass
+
+class TestOpinionRanking(object):
+    #TODO
+    pass
+
+class TestQueryRanking(object):
+    #TODO
+    pass
+
+class TestMixedRanking(object):
+    #TODO
+    pass
+    
+
+#
+# Testing "private" functions
+#
+#TODO: main, _find_query_spans(words, query), _compute_query_match_score(sentence, query), _score_sentence(sentence, query), _count_opinion_indicators(sentence), _rank_sentences(sentences, query_words), _select_snippet_sentences(TONS), _insert_highlights(TONS)
+
+#
+# Testing "private" string-utility functions
+#
+class TestSplitIntoSentences(object):
+    def test_single_period(self):
+        doc = 'That sure is a nice hat.'
+        assert len(snippets._split_into_sentences(doc)) == 1
+        
+    def test_single_with_comma(self):
+        doc = 'I like apples, oranges, and peas.'
+        sentences = snippets._split_into_sentences(doc) 
+        assert sentences == ['I like apples, oranges, and peas.']
+
+    def test_single_questionmark(self):
+        doc = 'You like my hat?'
+        sentences = snippets._split_into_sentences(doc) 
+        assert sentences == ['You like my hat?']
+
+    def test_single_exclamationmark(self):
+        doc = 'Of course I do!'
+        sentences = snippets._split_into_sentences(doc) 
+        assert sentences == ['Of course I do!']
+
+    def test_single_ellipsis(self):
+        doc = 'The food was alright...'
+        sentences = snippets._split_into_sentences(doc) 
+        assert sentences == ['The food was alright...']
+
+    def test_double_period(self):
+        doc = 'I am tired. Go away.'
+        sentences = snippets._split_into_sentences(doc) 
+        assert sentences == ['I am tired.', 'Go away.']
+
+    def test_double_marks(self):
+        doc = 'I am tired! Would you leave?'
+        sentences = snippets._split_into_sentences(doc) 
+        assert sentences == ['I am tired!', 'Would you leave?']
+
+    def test_double_ellipsis(self):
+        doc = 'Well whatever... Yeah whatever...'
+        sentences = snippets._split_into_sentences(doc) 
+        assert sentences == ['Well whatever...', 'Yeah whatever...']
+    
+
+    def test_double_period(self):
+        doc = 'I am tired. Go away.'
+        sentences = snippets._split_into_sentences(doc) 
+        assert sentences == ['I am tired.', 'Go away.']
+
+
+class TestSplitIntoWords(object):
+    def test_lowercase_period(self):
+        sentence = 'i am not a frog.'
+        words = snippets._split_into_words(sentence)
+        assert words == ['i', 'am', 'not', 'a', 'frog', '.']
+
+    def test_mixedcase_period(self):
+        sentence = 'I am NOT a frog.'
+        words = snippets._split_into_words(sentence)
+        assert words == ['I', 'am', 'NOT', 'a', 'frog', '.']
+
+    def test_commas(self):
+        sentence = 'I like commas, commas, and commas.'
+        words = snippets._split_into_words(sentence)
+        assert words == ['I', 'like', 'commas', 'commas', 'and', 'commas', '.']
+
+    def test_exclamationmark(self):
+        sentence = 'You are SO a frog!'
+        words = snippets._split_into_words(sentence)
+        assert words == ['I', 'am', 'NOT', 'a', 'frog', '!']
+
+    def test_questionmark(self):
+        sentence = 'Why am I a frog?'
+        words = snippets._split_into_words(sentence)
+        assert words == ['Why', 'am', 'I', 'a', 'frog', '?']
+
+    def test_ellipsis(self):
+        sentence = 'The food was horrible...'
+        words = snippets._split_into_words(sentence)
+        assert words == ['The', 'food', 'was', 'horrible', '...']
+
+    def test_numbers_own_word(self):
+        sentence = 'There are 4 lights.'
+        words = snippets._split_into_words(sentence)
+        assert words == ['There', 'are', '4', 'lights', '.']
+
+    def test_numbers_part_word(self):
+        sentence = 'I am word47word.'
+        words = snippets._split_into_words(sentence)
+        assert words == ['I', 'am', 'word47word', '.']
+
+    def test_dollar_in_word(self):
+        sentence = 'It was $10.'
+        words = snippets._split_into_words(sentence)
+        assert words == ['It', 'was', '$10', '.']
+
+    def test_dollar_own_word_1(self):
+        sentence = 'That place was $.'
+        words = snippets._split_into_words(sentence)
+        assert words == ['That', 'place', 'was', '$', '.']
+
+    def test_dollar_own_word_2(self):
+        sentence = 'That place was $$.'
+        words = snippets._split_into_words(sentence)
+        assert words == ['That', 'place', 'was', '$$', '.']
+
+    def test_price_1(self):
+        sentence = 'It costs $47.'
+        words = snippets._split_into_words(sentence)
+        assert words == ['It', 'costs', '$47', '.']
+
+    def test_price_2(self):
+        sentence = 'It costs $9.47.'
+        words = snippets._split_into_words(sentence)
+        assert words == ['It', 'costs', '$9.47', '.']
+
+    def test_price_3(self):
+        sentence = 'It costs .47.'
+        words = snippets._split_into_words(sentence)
+        assert words == ['It', 'costs', '.47', '.']
+
+class TestJoinWords(object):
+    def test_simple(self):
+        words = ['How', 'are', 'you']
+        joined = snippets._join_words(words)
+        assert joined == 'how are you'
+
+    def test_question(self):
+        words = ['how', 'are', 'you', '?']
+        joined = snippets._join_words(words)
+        assert joined == 'how are you?'
+
+    def test_exclamation(self):
+        words = ['Go', 'away', '!']
+        joined = snippets._join_words(words)
+        assert joined == "Go away!"
+
+    def test_multiple_marks(self):
+        words = ['Go', 'away', '!', 'I', "don't", 'like', 'you', '.']
+        joined = snippets._join_words(words)
+        assert joined == "Go away! I don't like you."
+
+
+    def test_mixed(self):
+        words = ['I', 'paid', '$24', '.', 'So', 'there', '!']
+        joined = snippets._join_words(words)
+        assert joined == 'I paid $24. So there!'
+
+    def test_ellipsis(self):
+        words = ['Whatever', '...', 'Hey', 'there', '.']
+        joined = snippets._join_words(words)
+        assert joined == 'Whatever... Hey there.'
+
+
