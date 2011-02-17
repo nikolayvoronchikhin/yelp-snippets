@@ -9,6 +9,7 @@ OPINION_INDICATORS = set("""
     hate hated hates avoid avoided avoids
     """.split())
 
+PUNCTUATION = set(('.', '?', '!', '...')) #TODO: use this
 
 
 def highlight_doc(doc, query, opentag='[[HIGHLIGHT]]', 
@@ -16,11 +17,11 @@ def highlight_doc(doc, query, opentag='[[HIGHLIGHT]]',
                   max_sents=float('infinity')):
     """Return snippets from `doc` with `query` words tagged."""
     # Break document and query into lists of sentences and words.
-    sentences = [split_into_words(sent) for sent in split_into_sentences(doc)]
-    query = split_into_words(query)
+    sentences = [_split_into_words(sent) for sent in _split_into_sentences(doc)]
+    query = _split_into_words(query)
 
     # Select the best sentences given the constraints.
-    snippet_sents = select_snippet_sentences(sentences, query, max_chars, 
+    snippet_sents = _select_snippet_sentences(sentences, query, max_chars, 
                                              max_sents, opentag, closetag)
 
     snippet_words = []
@@ -28,30 +29,37 @@ def highlight_doc(doc, query, opentag='[[HIGHLIGHT]]',
         snippet_words += sent
 
     # Surround spans from `query` in the highlighted snippet with tags.
-    highlighted_snippet = insert_highlights(snippet_words, query, opentag, 
+    highlighted_snippet = _insert_highlights(snippet_words, query, opentag, 
                                             closetag)
 
     if not highlighted_snippet:
         return ''
     else:
-        return join_words(highlighted_snippet)
+        return _join_words(highlighted_snippet)
     
 
-def join_words(words):
-    """Create a string with spaces between words but not before punctuation."""
+def _insert_highlights(snippet_words, query_words, opentag, closetag):
+    spans = dict(_find_query_spans(snippet_words, query_words))
     strings = []
-    for i, word in enumerate(words[: -1]):
-        if i + 1 < len(words) and words[i + 1] in '.?!':
-            strings.append(word)
+    i = 0
+    while i < len(snippet_words):
+        if spans.has_key(i):
+            start, end = i, spans[i]
+            strings.append(opentag)
+            strings.extend(snippet_words[start: end])
+            strings.append(closetag)
+            i = end
         else:
-            strings.append(word + ' ')
-    return ''.join(strings) + words[-1]
+            strings.append(snippet_words[i])
+            i += 1
+    return strings 
 
-def select_snippet_sentences(sentences, query_words, max_chars, max_sents,
+#
+# Snippet selection
+#
+def _select_snippet_sentences(sentences, query_words, max_chars, max_sents,
                              opentag, closetag):
-    """
-    """
-    ranked_sentences = rank_sentences(sentences, query_words)
+    ranked_sentences = _rank_sentences(sentences, query_words)
 
     char_count = sent_count = 0
     sentences = []
@@ -63,31 +71,29 @@ def select_snippet_sentences(sentences, query_words, max_chars, max_sents,
             sentences.append(sentence)
             char_count += len(sentence) + len(opentag) + len(closetag)
             sent_count += 1
-
     return sentences
 
-def rank_sentences(sentences, query_words):
+def _rank_sentences(sentences, query_words):
     scores = []
     for sentence in sentences:
-        score = score_sentence(sentence, query_words)
+        score = _score_sentence(sentence, query_words)
         scores.append((score, sentence))
 
     scores.sort(reverse=True)
     return [score[1] for score in scores]
     
 
-
-def count_opinion_indicators_in_sentence(sentence):
+def _count_opinion_indicators(sentence):
     return sum(1 for word in OPINION_INDICATORS if word in sentence)
 
-def score_sentence(sentence, query):
-    opinion_indicator_count = count_opinion_indicators_in_sentence(sentence)
-    query_match_score = compute_query_match_score(sentence, query)
+
+def _score_sentence(sentence, query):
+    opinion_indicator_count = _count_opinion_indicators(sentence)
+    query_match_score = _compute_query_match_score(sentence, query)
     return opinion_indicator_count + query_match_score
     
 
-
-def compute_query_match_score(sentence, query):
+def _compute_query_match_score(sentence, query):
     """Compute the extent to which the sentence matches the query.
 
     To obtain a score:
@@ -101,56 +107,11 @@ def compute_query_match_score(sentence, query):
       Integer representing the number of partial and whole `query` matches in 
       `sentence`.
     """
-    spans = find_query_spans(sentence, query)
+    spans = _find_query_spans(sentence, query)
     return sum(len(span) ** 2 for span in spans)
 
 
-
-def split_into_sentences(doc):
-    doc = re.sub(r'\s+', ' ', doc)
-    pat = re.compile(r"""[A-Za-z '"]+[.?!]""")
-    sentences = [sent.strip() for sent in pat.findall(doc)]
-    return sentences
-
-
-def split_into_words(sentence):
-    """
-    Args:
-      sentence: String
-    Returns:
-      List of words and punctuation marks in `sentence`.
-    """
-    pat = re.compile(r"""   
-            ['"]?[-A-Za-z']+['"]?  # letters, optionally quoted
-            |
-            \.{3}                  # ellipsis
-            |
-            [.?!]                  # punctuation
-            """, re.VERBOSE)
-    return pat.findall(sentence)
-
-def insert_highlights(snippet_words, query_words, opentag, closetag):
-    spans = dict(find_query_spans(snippet_words, query_words))
-
-    strings = []
-    i = 0
-    while i < len(snippet_words):
-        if spans.has_key(i):
-            start, end = i, spans[i]
-            strings.append(opentag)
-            strings.extend(snippet_words[start: end])
-            strings.append(closetag)
-            
-            i = end
-        else:
-            strings.append(snippet_words[i])
-            i += 1
-
-    return strings 
-
-
-
-def find_query_spans(words, query):
+def _find_query_spans(words, query):
     """Find all non-overlapping spans in `words` that are in `query`.
     Args:
       words: List of Strings
@@ -163,7 +124,7 @@ def find_query_spans(words, query):
     Example:
     >>> words = 'Pizza ? I love deep dish ! Deep dish pizza is great .'.split()
     >>> query = 'deep dish pizza'.split()
-    >>> print find_query_spans(words, query)
+    >>> print _find_query_spans(words, query)
     [(0, 1), (4, 6), (7, 10)]
     """
     spans = []
@@ -185,6 +146,44 @@ def find_query_spans(words, query):
             spans.append((span_start, span_end))
     return spans
 
+#
+# String breaking and joining
+#
+def _join_words(words):
+    """Create a string with spaces between words but not before punctuation."""
+    strings = []
+    for i, word in enumerate(words[: -1]):
+        if i + 1 < len(words) and words[i + 1] in '.?!':
+            strings.append(word)
+        else:
+            strings.append(word + ' ')
+    return ''.join(strings) + words[-1]
+
+
+def _split_into_sentences(doc):
+    doc = re.sub(r'\s+', ' ', doc)
+    pat = re.compile(r"""[A-Za-z '"]+[.?!]""")
+    sentences = [sent.strip() for sent in pat.findall(doc)]
+    return sentences
+
+
+def _split_into_words(sentence):
+    """
+    Args:
+      sentence: String
+    Returns:
+      List of words and punctuation marks in `sentence`.
+    """
+    pat = re.compile(r"""   
+            ['"]?[-A-Za-z']+['"]?  # letters, optionally quoted
+            |
+            \.{3}                  # ellipsis
+            |
+            [.?!]                  # punctuation
+            """, re.VERBOSE)
+    return pat.findall(sentence)
+
+
 def main():
     doc = """I really love deep dish pizza. They have good salads too. But the 
              dish pizza is incredible. Great pizza."""
@@ -194,3 +193,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
