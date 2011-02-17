@@ -54,25 +54,6 @@ class TestCaseSensitivity(object):
         snippet = snippets.highlight_doc(doc, query)
         assert snippet == '[[HIGHLIGHT]]pEpPeRoNi PiZzA[[ENDHIGHLIGHT]]'
 
-class TestCustomTags(object):
-    def test_open_tag(self):
-        doc = 'I eat sushi.'
-        query = 'sushi'
-        snippet = snippets.highlight_doc(doc, query, opentag='<highlight>')
-        assert snippet == 'I eat <highlight>sushi[[ENDHIGHLIGHT]].'
-
-    def test_close_tag(self):
-        doc = 'I eat sushi.'
-        query = 'sushi'
-        snippet = snippets.highlight_doc(doc, query, closetag='</highlight>')
-        assert snippet == 'I eat [[HIGHLIGHT]]sushi</highlight>.'
-
-    def test_both_tags(self):
-        doc = 'I eat sushi.'
-        query = 'sushi'
-        snippet = snippets.highlight_doc(doc, query, opentag='<highlight>', closetag='</highlight>')
-        assert snippet == 'I eat <highlight>sushi</highlight>.'
-
 
 class TestMaxChars(object):
     #TODO

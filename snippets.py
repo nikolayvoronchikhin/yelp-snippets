@@ -11,10 +11,12 @@ OPINION_INDICATORS = set("""
 
 PUNCTUATION = set(('.', '?', '!', '...')) #TODO: use this
 
+OPENTAG, CLOSETAG = '[[HIGHLIGHT]]', '[[ENDHIGHLIGHT]]'
 
-def highlight_doc(doc, query, opentag='[[HIGHLIGHT]]', 
-                  closetag='[[ENDHIGHLIGHT]]', max_chars=float('infinity'), 
-                  max_sents=float('infinity')):
+INFINITY = float('infinity')
+
+
+def highlight_doc(doc, query, max_chars=INFINITY, max_sents=INFINITY):
     """Return snippets from `doc` with `query` words tagged."""
     # Break document and query into lists of sentences and words.
     sentences = [_split_into_words(sent) for sent in _split_into_sentences(doc)]
@@ -22,15 +24,15 @@ def highlight_doc(doc, query, opentag='[[HIGHLIGHT]]',
 
     # Select the best sentences given the constraints.
     snippet_sents = _select_snippet_sentences(sentences, query, max_chars, 
-                                             max_sents, opentag, closetag)
+                                              max_sents)
 
     snippet_words = []
     for sent in snippet_sents:
         snippet_words += sent
 
     # Surround spans from `query` in the highlighted snippet with tags.
-    highlighted_snippet = _insert_highlights(snippet_words, query, opentag, 
-                                            closetag)
+    highlighted_snippet = _insert_highlights(snippet_words, query)
+    
 
     if not highlighted_snippet:
         return ''
@@ -38,16 +40,16 @@ def highlight_doc(doc, query, opentag='[[HIGHLIGHT]]',
         return _join_words(highlighted_snippet)
     
 
-def _insert_highlights(snippet_words, query_words, opentag, closetag):
+def _insert_highlights(snippet_words, query_words):
     spans = dict(_find_query_spans(snippet_words, query_words))
     strings = []
     i = 0
     while i < len(snippet_words):
         if spans.has_key(i):
             start, end = i, spans[i]
-            strings.append(opentag)
+            strings.append(OPENTAG)
             strings.extend(snippet_words[start: end])
-            strings.append(closetag)
+            strings.append(CLOSETAG)
             i = end
         else:
             strings.append(snippet_words[i])
@@ -57,8 +59,7 @@ def _insert_highlights(snippet_words, query_words, opentag, closetag):
 #
 # Snippet selection
 #
-def _select_snippet_sentences(sentences, query_words, max_chars, max_sents,
-                             opentag, closetag):
+def _select_snippet_sentences(sentences, query_words, max_chars, max_sents):
     ranked_sentences = _rank_sentences(sentences, query_words)
 
     char_count = sent_count = 0
@@ -69,7 +70,7 @@ def _select_snippet_sentences(sentences, query_words, max_chars, max_sents,
 
         else:
             sentences.append(sentence)
-            char_count += len(sentence) + len(opentag) + len(closetag)
+            char_count += len(sentence) + len(OPENTAG) + len(CLOSETAG)
             sent_count += 1
     return sentences
 
@@ -154,6 +155,10 @@ def _join_words(words):
     strings = []
     for i, word in enumerate(words[: -1]):
         if i + 1 < len(words) and words[i + 1] in '.?!':
+            strings.append(word)
+        elif word == '[[HIGHLIGHT]]':
+            strings.append(word)
+        elif i + 1 < len(words) and words[i + 1] == '[[ENDHIGHLIGHT]]':
             strings.append(word)
         else:
             strings.append(word + ' ')
