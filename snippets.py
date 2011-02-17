@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 
 import re
-from pprint import pprint
-import heapq
 
 OPINION_INDICATORS = set("""
     nice good better best beautiful great delicious favorite wonderful friendly 
@@ -30,7 +28,8 @@ def highlight_doc(doc, query, opentag='[[HIGHLIGHT]]',
         snippet_words += sent
 
     # Surround spans from `query` in the highlighted snippet with tags.
-    highlighted_snippet = insert_highlights(snippet_words, query, opentag, closetag)
+    highlighted_snippet = insert_highlights(snippet_words, query, opentag, 
+                                            closetag)
 
     if not highlighted_snippet:
         return ''
@@ -67,9 +66,6 @@ def select_snippet_sentences(sentences, query_words, max_chars, max_sents,
 
     return sentences
 
-
-
-
 def rank_sentences(sentences, query_words):
     scores = []
     for sentence in sentences:
@@ -80,8 +76,6 @@ def rank_sentences(sentences, query_words):
     return [score[1] for score in scores]
     
 
-
-    return sentences
 
 def count_opinion_indicators_in_sentence(sentence):
     return sum(1 for word in OPINION_INDICATORS if word in sentence)
