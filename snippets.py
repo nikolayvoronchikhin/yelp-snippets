@@ -180,7 +180,7 @@ def _split_into_words(sentence):
       List of words and punctuation marks in `sentence`.
     """
     pat = re.compile(r"""   
-            ['"]?[-A-Za-z']+['"]?  # letters, optionally quoted
+            ['"]?[-A-Za-z0-9@#$%^&*()'~=+_-]+['"]?  # letters, optionally quoted
             |
             \.{3}                  # ellipsis
             |
