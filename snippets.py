@@ -15,12 +15,15 @@ Example Usage
 >>> doc = 'The only good pizza is a pepperoni pizza.'
 >>> query = 'pepperoni pizza'
 >>> highlighted_snippet = highlight_doc(doc, query)
-#TODO
+>>> print highlighted_snippet
+The only good [[HIGHLIGHT]]pizza[[ENDHIGHLIGHT]] is a [[HIGHLIGHT]]pepperoni \
+pizza[[ENDHIGHLIGHT]].
 """
 
 __all__ = ['highlight_doc']
 
 
+import operator
 from optparse import OptionParser
 import re
 import sys
@@ -28,15 +31,14 @@ import sys
 
 # Words that are likely to be included in opinion-indicating sentences.
 OPINION_INDICATORS = set("""
-    nice good better best beautiful great delicious favorite wonderful friendly 
+    nice good better best beautiful great awesome delicious favorite wonderful 
+    friendly fast
     bad worst worse ugly horrible disgusting worst mean
     love loved loves like liked likes amaze amazed amazes
     hate hated hates avoid avoided avoids
     """.split())
 
 PUNCTUATION = set(('.', '?', '!', '...'))
-
-#TODO: pull of RE for sentences/words
 
 OPENTAG, CLOSETAG = '[[HIGHLIGHT]]', '[[ENDHIGHLIGHT]]'
 
@@ -102,9 +104,6 @@ def _insert_highlights(snippet_words, query_words):
             i += 1
     return strings 
 
-#
-# Snippet selection
-#
 def _select_snippet_sentences(sentences, query_words, max_chars, max_sents):
     """Select a relevant sublist of sentences.
 
@@ -113,21 +112,37 @@ def _select_snippet_sentences(sentences, query_words, max_chars, max_sents):
       query_words: List of strings representing query terms.
     Returns:
       List of sentences taken from `sentences` not containing more sentences
-      than `max_sents` nor more characters than `max_chars`.
+      than `max_sents` nor more characters than `max_chars`. If there are
+      more sentences or characters than the max value then sentences containing
+      the most query term matches and opinion-indicating words are selected.
     """
-    ranked_sentences = _rank_sentences(sentences, query_words)
+    ranked_sentences = [(pos, sent, score) for (pos, (sent, score)) 
+                        in enumerate(_rank_sentences(sentences, query_words))]
+
+    ranked_sentences.sort(key=operator.itemgetter(2), reverse=True)
 
     char_count = sent_count = 0
-    sentences = []
-    for sentence in ranked_sentences:
-        if char_count > max_chars or sent_count > max_sents:
-            break
+    keep = []
+    for (pos, sentence, score) in ranked_sentences:
+        length = len(_insert_highlights(sentence, query_words))
 
+        if char_count + length > max_chars or sent_count + 1 > max_sents:
+            continue
         else:
-            sentences.append(sentence)
-            char_count += len(sentence) + len(OPENTAG) + len(CLOSETAG)
+            keep.append((pos, sentence, score))
+            char_count += length
             sent_count += 1
-    return sentences
+
+    keep.sort(key=operator.itemgetter(0))
+
+    # Only include sentences in the snippet if they have query or indicator
+    # word matches unless there aren't any-- then include all.
+    positive_scores = [triplet for triplet in keep if triplet[2] > 0]
+    if positive_scores:
+        return [triplet[1] for triplet in positive_scores]
+    else:
+        return [triplet[1] for triplet in keep]
+
 
 def _rank_sentences(sentences, query_words):
     """Compute each sentence's score.
@@ -136,16 +151,14 @@ def _rank_sentences(sentences, query_words):
       sentences: List of List (sentence) of Strings (words).
       query_words: List of Strings that are words in the input query.
     Returns:
-      List of sentences ranked from highest- to lowest-scoring.
-      #TODO:List of (sentence, score) pairs.
+      List of (sentence, score) pairs.
     """
     scores = []
     for sentence in sentences:
         score = _score_sentence(sentence, query_words)
-        scores.append((score, sentence))
+        scores.append((sentence, score))
 
-    scores.sort(reverse=True)
-    return [score[1] for score in scores]
+    return scores
     
 
 def _count_opinion_indicators(sentence):
@@ -156,7 +169,7 @@ def _count_opinion_indicators(sentence):
     Returns:
       Integer that is the number of `OPINION_INDICATORS` found in `sentence`.
     """
-    return sum(1 for word in OPINION_INDICATORS if word in sentence)
+    return sum(1 for word in sentence if word in OPINION_INDICATORS)
 
 
 def _score_sentence(sentence, query_words):
@@ -189,7 +202,7 @@ def _compute_query_match_score(sentence, query_words):
       in `sentence`.
     """
     spans = _find_query_spans(sentence, query_words)
-    return sum(len(span) ** 2 for span in spans)
+    return sum((span[1] - span[0]) ** 2 for span in spans)
 
 
 def _find_query_spans(words, query_words):
@@ -201,12 +214,6 @@ def _find_query_spans(words, query_words):
       List of Integer pairs indicating the start and end indices of all non-
       overlapping `query_words` in `words`. Longer strings are preferred over
       short ones.
-
-    Example:
-    >>> words = 'Pizza ? I love deep dish ! Deep dish pizza is great .'.split()
-    >>> query_words = 'deep dish pizza'.split()
-    >>> print _find_query_spans(words, query_words)
-    [(0, 1), (4, 6), (7, 10)]
     """
     spans = []
     in_span = False
@@ -245,9 +252,6 @@ def _find_query_spans(words, query_words):
 
     return spans
 
-#
-# String breaking and joining
-#
 def _join_words(words):
     """Join `words` with spaces only where appropriate.
     
@@ -310,7 +314,6 @@ def _split_into_words(sentence):
             [.?!]                  # other punctuation
             """, re.VERBOSE)
     return pat.findall(sentence)
-    return [sent[0] for sent in pat.findall(sentence)]
 
 
 def main(args):
@@ -347,7 +350,6 @@ def main(args):
 
     snippet = highlight_doc(doc, query, options.max_chars, options.max_sents)
     print snippet
-
     return 0
 
 
