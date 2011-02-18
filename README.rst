@@ -87,4 +87,8 @@ Code Improvements
   straightforward to fix this, but the regular expressions would have to get a
   bit uglier.
 
+* And speaking of regular expressions, the ones I have for words and sentences
+  are pretty ugly. I created most of my unit tests by just thinking of example
+  sentences and documents. If I were to look through more actual reviews from 
+  Yelp I'm sure I would find a lot more weird cases I'd want to cover.
 
