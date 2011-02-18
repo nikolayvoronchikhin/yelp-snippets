@@ -61,8 +61,18 @@ class TestCaseSensitivity(object):
 
 
 class TestMaxChars(object):
-    #TODO
-    pass
+    def test_no_tags(self):
+        doc = 'I love pepperoni pizza. LOL!'
+        query = 'pizza'
+        snippet = snippets.highlight_doc(doc, query, max_chars=10)
+        assert snippet == 'LOL!'
+
+    def test_with_tags(self):
+        doc = 'I love pepperoni pizza. Pizza!'
+        query = 'pizza'
+        snippet = snippets.highlight_doc(doc, query, max_chars=35)
+        assert snippet == '[[HIGHLIGHT]]Pizza[[ENDHIGHLIGHT]]!'
+
 
 class TestMaxSents(object):
     #TODO

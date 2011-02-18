@@ -31,7 +31,8 @@ import sys
 
 # Words that are likely to be included in opinion-indicating sentences.
 OPINION_INDICATORS = set("""
-    nice good better best beautiful great awesome delicious favorite wonderful 
+    nice good better best beautiful great awesome amazing
+    delicious favorite wonderful 
     friendly fast
     bad worst worse ugly horrible disgusting worst mean
     love loved loves like liked likes amaze amazed amazes
@@ -124,7 +125,7 @@ def _select_snippet_sentences(sentences, query_words, max_chars, max_sents):
     char_count = sent_count = 0
     keep = []
     for (pos, sentence, score) in ranked_sentences:
-        length = len(_insert_highlights(sentence, query_words))
+        length = len(''.join(_insert_highlights(sentence, query_words)))
 
         if char_count + length > max_chars or sent_count + 1 > max_sents:
             continue
