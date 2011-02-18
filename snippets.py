@@ -132,21 +132,38 @@ def _find_query_spans(words, query):
     """
     spans = []
     in_span = False
+    old_query_index = None
 
     # Queries are considered case-insensitive.
     words = [word.lower() for word in words]
     query = [query_word.lower() for query_word in query]
 
     for i, word in enumerate(words):
-        if word in query and not in_span:
-            # Found beginning of new span
-            in_span = True
-            span_start = i
+        if word in query:
+            query_index = query.index(word)
+
+            if in_span:
+                if old_query_index + 1 != query_index:
+                    # Found end of span and beginning of new
+                    span_end = i
+                    spans.append((span_start, span_end))
+                    span_start = i
+            else:
+                # Found beginning of new span
+                in_span = True
+                span_start = i
+            old_query_index = query_index
+
         elif word not in query and in_span:
             # Found end of span
             in_span = False
             span_end = i
             spans.append((span_start, span_end))
+
+    if in_span:
+        # Add final span if one ends at the list list item
+        spans.append((span_start, i + 1))
+
     return spans
 
 #
@@ -156,7 +173,7 @@ def _join_words(words):
     """Create a string with spaces between words but not before punctuation."""
     strings = []
     for i, word in enumerate(words[: -1]):
-        if i + 1 < len(words) and words[i + 1] in '.?!':
+        if i + 1 < len(words) and words[i + 1] in PUNCTUATION:
             strings.append(word)
         elif word == '[[HIGHLIGHT]]':
             strings.append(word)
@@ -171,7 +188,13 @@ def _split_into_sentences(doc):
     doc = re.sub(r'\s+', ' ', doc)
     pat = re.compile(r"""[A-Za-z '"]+[.?!]""")
     sentences = [sent.strip() for sent in pat.findall(doc)]
-    return sentences
+
+    # Return the doc itself as the sentence if there are no matches so that
+    # a document without punctuation will be considered a single sentence.
+    if not sentences:
+        return [doc]
+    else:
+        return sentences
 
 
 def _split_into_words(sentence):
