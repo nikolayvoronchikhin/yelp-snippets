@@ -7,6 +7,11 @@ These tests are meant to be run using nosetests.
 
 import snippets
 
+class TestFullMatch(object):
+    def test_(self):
+        doc = query = 'pepperoni pizza'
+        snippet = snippets.highlight_doc(doc, query)
+        assert snippet == '[[HIGHLIGHT]]pepperoni pizza[[ENDHIGHLIGHT]]'
 
 class TestSingleSentence(object):
     def test_single_word_query(self):
@@ -23,16 +28,16 @@ class TestSingleSentence(object):
         assert snippet == 'I really love [[HIGHLIGHT]]deep dish pizza[[ENDHIGHLIGHT]].'
 
     def test_multiple_query_matches_1(self):
-        doc = 'Their speciality pizza is deep dish pizza.'
+        doc = 'Their specialty pizza is deep dish pizza.'
         query = 'deep dish pizza'
         snippet = snippets.highlight_doc(doc, query)
-        assert snippet == 'Their specialty [[HIGHLIGHT]]pizza[[ENDHIGHLIGHT]] is [[HIGHLIGHT]]deep dish pizza[[ENGHIGHLIGHT]].'
+        assert snippet == 'Their specialty [[HIGHLIGHT]]pizza[[ENDHIGHLIGHT]] is [[HIGHLIGHT]]deep dish pizza[[ENDHIGHLIGHT]].'
 
     def test_multiple_query_matches_2(self):
         doc = 'pizza pepperoni olive pizza olive pizza'
         query = 'pepperoni olive pizza'
         snippet = snippets.highlight_doc(doc, query)
-        assert snippet == '[[HIGHLIGHT]]pizza[[ENDHIGHLIGHT]] [[HIGHLIGHT]]pepperoni olive pizza[[ENDHIGHLIGHT]] [[HIGHLIGHT]]olive pizza[[ENDHIGHLIGHT]].'
+        assert snippet == '[[HIGHLIGHT]]pizza[[ENDHIGHLIGHT]] [[HIGHLIGHT]]pepperoni olive pizza[[ENDHIGHLIGHT]] [[HIGHLIGHT]]olive pizza[[ENDHIGHLIGHT]]'
 
 
 class TestCaseSensitivity(object):
@@ -83,6 +88,39 @@ class TestMixedRanking(object):
 #
 # Testing "private" functions
 #
+class TestFindQuerySpans(object):
+    def test_single_1(self):
+        words = query = 'pizza'.split()
+        spans = snippets._find_query_spans(words, query)
+        assert spans == [(0, 1)]
+
+    def test_single_2(self):
+        words = 'Pizza is great .'.split()
+        query = 'pizza'.split()
+        spans = snippets._find_query_spans(words, query)
+        assert spans == [(0, 1)]
+
+    def test_multiple(self):
+        words = """My favorite pizza is deep dish . Deep dish pizza is hella
+                   sick pizza bro .""".split()
+        query = 'deep dish pizza'.split()
+        spans = snippets._find_query_spans(words, query)
+        assert spans == [(2, 3), (4, 6), (7, 10), (13, 14)]
+
+    def test_overlap(self):
+        words = 'pizza pepperoni pizza'.split()
+        query = 'pepperoni pizza'.split()
+        spans = snippets._find_query_spans(words, query)
+        assert spans == [(0, 1), (1, 3)]
+
+
+    def test_full(self):
+        words = 'Pizza ? I love deep dish ! Deep dish pizza is great .'.split()
+        query = 'deep dish pizza'.split()
+        spans = snippets._find_query_spans(words, query)
+        assert spans == [(0, 1), (4, 6), (7, 10)]
+
+
 #TODO: main, _find_query_spans(words, query), _compute_query_match_score(sentence, query), _score_sentence(sentence, query), _count_opinion_indicators(sentence), _rank_sentences(sentences, query_words), _select_snippet_sentences(TONS), _insert_highlights(TONS)
 
 #
@@ -126,13 +164,18 @@ class TestSplitIntoSentences(object):
     def test_double_ellipsis(self):
         doc = 'Well whatever... Yeah whatever...'
         sentences = snippets._split_into_sentences(doc) 
+        print sentences
         assert sentences == ['Well whatever...', 'Yeah whatever...']
-    
 
     def test_double_period(self):
         doc = 'I am tired. Go away.'
         sentences = snippets._split_into_sentences(doc) 
         assert sentences == ['I am tired.', 'Go away.']
+
+    def test_no_punctuation(self):
+        doc = 'I want some Thai food'
+        sentences = snippets._split_into_sentences(doc)
+        assert sentences == ['I want some Thai food']
 
 
 class TestSplitIntoWords(object):
@@ -147,14 +190,14 @@ class TestSplitIntoWords(object):
         assert words == ['I', 'am', 'NOT', 'a', 'frog', '.']
 
     def test_commas(self):
-        sentence = 'I like commas, commas, and commas.'
+        sentence = 'Comma, comma, comma.'
         words = snippets._split_into_words(sentence)
-        assert words == ['I', 'like', 'commas', 'commas', 'and', 'commas', '.']
+        assert words == ['Comma', ',', 'comma', ',', 'comma', '.']
 
     def test_exclamationmark(self):
         sentence = 'You are SO a frog!'
         words = snippets._split_into_words(sentence)
-        assert words == ['I', 'am', 'NOT', 'a', 'frog', '!']
+        assert words == ['You', 'are', 'SO', 'a', 'frog', '!']
 
     def test_questionmark(self):
         sentence = 'Why am I a frog?'
@@ -210,7 +253,7 @@ class TestJoinWords(object):
     def test_simple(self):
         words = ['How', 'are', 'you']
         joined = snippets._join_words(words)
-        assert joined == 'how are you'
+        assert joined == 'How are you'
 
     def test_question(self):
         words = ['how', 'are', 'you', '?']
