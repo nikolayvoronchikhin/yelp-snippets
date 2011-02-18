@@ -1,9 +1,32 @@
 #!/usr/bin/env python
 
+"""Yelp review snippet creation.
+
+Author: Colin Pollock ~ colin@colinpollock.net
+
+This module's only public function is `highlight_doc`, which takes a document 
+and a query and produces a snippet that is composed of sentences from the
+document with terms from the query highlighted. The number of characters and
+sentences in the snippet can be constrained by passing in integers for the 
+optional parameters `max_sents` and `max_chars`.
+
+
+Example Usage
+>>> doc = 'The only good pizza is a pepperoni pizza.'
+>>> query = 'pepperoni pizza'
+>>> highlighted_snippet = highlight_doc(doc, query)
+#TODO
+"""
+
+__all__ = ['highlight_doc']
+
+
 from optparse import OptionParser
 import re
 import sys
 
+
+# Words that are likely to be included in opinion-indicating sentences.
 OPINION_INDICATORS = set("""
     nice good better best beautiful great delicious favorite wonderful friendly 
     bad worst worse ugly horrible disgusting worst mean
@@ -11,7 +34,7 @@ OPINION_INDICATORS = set("""
     hate hated hates avoid avoided avoids
     """.split())
 
-PUNCTUATION = set(('.', '?', '!', '...')) #TODO: use this
+PUNCTUATION = set(('.', '?', '!', '...'))
 
 #TODO: pull of RE for sentences/words
 
@@ -21,7 +44,16 @@ INFINITY = float('infinity')
 
 
 def highlight_doc(doc, query, max_chars=INFINITY, max_sents=INFINITY):
-    """Return snippets from `doc` with `query` words tagged."""
+    """Return snippets from `doc` with `query` words tagged.
+    
+    Args:
+      doc: String that is document to be highlighted.
+      query: String of words representing the query terms.
+      max_chars: Integer indicating the max number of chars in the snippet.
+      max_sents: Integer indicating the max number of sentences in the snippet.
+    Returns:
+      The most relevant snippet with all query terms highlighted.
+    """
     # Break document and query into lists of sentences and words.
     sentences = [_split_into_words(sent) for sent in _split_into_sentences(doc)]
     query = _split_into_words(query)
@@ -45,6 +77,16 @@ def highlight_doc(doc, query, max_chars=INFINITY, max_sents=INFINITY):
     
 
 def _insert_highlights(snippet_words, query_words):
+    """Highlight all query_words in snippet_words.
+
+    Args:
+      snippet_words: List of Strings representing a snippet.
+      query_words: List of Strings representing query terms.
+    Returns:
+      List of Strings that are in snippet_words with all words that are in
+      query_words surrounded by highlight tags. When a string of query words
+      is matched the whole span is enclosed in tags.
+    """
     spans = dict(_find_query_spans(snippet_words, query_words))
     strings = []
     i = 0
@@ -64,6 +106,15 @@ def _insert_highlights(snippet_words, query_words):
 # Snippet selection
 #
 def _select_snippet_sentences(sentences, query_words, max_chars, max_sents):
+    """Select a relevant sublist of sentences.
+
+    Args:
+      sentences: List of Lists of Strings (words) in a review.
+      query_words: List of strings representing query terms.
+    Returns:
+      List of sentences taken from `sentences` not containing more sentences
+      than `max_sents` nor more characters than `max_chars`.
+    """
     ranked_sentences = _rank_sentences(sentences, query_words)
 
     char_count = sent_count = 0
@@ -79,6 +130,15 @@ def _select_snippet_sentences(sentences, query_words, max_chars, max_sents):
     return sentences
 
 def _rank_sentences(sentences, query_words):
+    """Compute each sentence's score.
+
+    Args:
+      sentences: List of List (sentence) of Strings (words).
+      query_words: List of Strings that are words in the input query.
+    Returns:
+      List of sentences ranked from highest- to lowest-scoring.
+      #TODO:List of (sentence, score) pairs.
+    """
     scores = []
     for sentence in sentences:
         score = _score_sentence(sentence, query_words)
@@ -89,60 +149,77 @@ def _rank_sentences(sentences, query_words):
     
 
 def _count_opinion_indicators(sentence):
+    """Count the number of words associated with opinions in `sentences`.
+
+    Args:
+      sentence: List of Strings representing words.
+    Returns:
+      Integer that is the number of `OPINION_INDICATORS` found in `sentence`.
+    """
     return sum(1 for word in OPINION_INDICATORS if word in sentence)
 
 
-def _score_sentence(sentence, query):
+def _score_sentence(sentence, query_words):
+    """Compute score for a sentence wrt `query_words` and `OPINION_INDICATORS`.
+
+    Args:
+      sentence: List of Strings (words).
+      query_words: List of Strings that are words in the query.
+    Returns:
+      Integer that is the score.
+    """
     opinion_indicator_count = _count_opinion_indicators(sentence)
-    query_match_score = _compute_query_match_score(sentence, query)
+    query_match_score = _compute_query_match_score(sentence, query_words)
     return opinion_indicator_count + query_match_score
     
 
-def _compute_query_match_score(sentence, query):
-    """Compute the extent to which the sentence matches the query.
+def _compute_query_match_score(sentence, query_words):
+    """Compute the extent to which `sentence` matches words in `query_words`.
 
     To obtain a score:
-      * Find all subspans in `sentence` that are also in `query`.
-      * The score is the sum of the squares of the lengths of each subspan.
+      * Find all subspans in `sentence` that are also in `query_words`.
+      * The score is the sum of the squares of the lengths of each non-
+        overlapping subspan.
     
     Args:
       sentence: List of Strings, where each String is a word.
-      query: List of Strings.
+      query_words: List of Strings representing words in the query.
     Returns:
-      Integer representing the number of partial and whole `query` matches in 
-      `sentence`.
+      Integer representing the number of partial and whole `query_words` matches
+      in `sentence`.
     """
-    spans = _find_query_spans(sentence, query)
+    spans = _find_query_spans(sentence, query_words)
     return sum(len(span) ** 2 for span in spans)
 
 
-def _find_query_spans(words, query):
-    """Find all non-overlapping spans in `words` that are in `query`.
+def _find_query_spans(words, query_words):
+    """Find all non-overlapping spans in `words` that are in `query_words`.
     Args:
       words: List of Strings
-      query: List of strings
+      query_words: List of strings
     Returns:
       List of Integer pairs indicating the start and end indices of all non-
-      overlapping query words in `words`. Longer strings are preferred over
+      overlapping `query_words` in `words`. Longer strings are preferred over
       short ones.
 
     Example:
     >>> words = 'Pizza ? I love deep dish ! Deep dish pizza is great .'.split()
-    >>> query = 'deep dish pizza'.split()
-    >>> print _find_query_spans(words, query)
+    >>> query_words = 'deep dish pizza'.split()
+    >>> print _find_query_spans(words, query_words)
     [(0, 1), (4, 6), (7, 10)]
     """
     spans = []
     in_span = False
     old_query_index = None
+    span_start = None
 
     # Queries are considered case-insensitive.
     words = [word.lower() for word in words]
-    query = [query_word.lower() for query_word in query]
+    query_words = [query_word.lower() for query_word in query_words]
 
     for i, word in enumerate(words):
-        if word in query:
-            query_index = query.index(word)
+        if word in query_words:
+            query_index = query_words.index(word)
 
             if in_span:
                 if old_query_index + 1 != query_index:
@@ -156,7 +233,7 @@ def _find_query_spans(words, query):
                 span_start = i
             old_query_index = query_index
 
-        elif word not in query and in_span:
+        elif word not in query_words and in_span:
             # Found end of span
             in_span = False
             span_end = i
@@ -164,7 +241,7 @@ def _find_query_spans(words, query):
 
     if in_span:
         # Add final span if one ends at the list list item
-        spans.append((span_start, i + 1))
+        spans.append((span_start, len(words)))
 
     return spans
 
@@ -172,7 +249,18 @@ def _find_query_spans(words, query):
 # String breaking and joining
 #
 def _join_words(words):
-    """Create a string with spaces between words but not before punctuation."""
+    """Join `words` with spaces only where appropriate.
+    
+    Spaces are omitted:
+      * preceding punctuation
+      * around highlight tags
+      * at the end of the string
+
+    Args:
+      words: List of Strings.
+    Returns:
+      String that is a smart joining of `words`.
+    """
     strings = []
     for i, word in enumerate(words[: -1]):
         if i + 1 < len(words) and words[i + 1] in PUNCTUATION:
@@ -187,8 +275,14 @@ def _join_words(words):
 
 
 def _split_into_sentences(doc):
+    """Split a document at punctuation boundaries.
+    Args:
+      doc: String representing a review document.
+    Returns:
+      List of individual sentences (Strings) in `doc`.
+    """
     doc = re.sub(r'\s+', ' ', doc)
-    pat = re.compile(r"""([A-Za-z '"]+(\.{3}|[.?!]))""")
+    pat = re.compile(r"""([A-Za-z0-9 ,'"@#$%^&*()~=+-]+(\.{3}|[.?!]))""")
     sentences = [sent[0].strip() for sent in pat.findall(doc)]
 
     # Return the doc itself as the sentence if there are no matches so that
@@ -206,14 +300,17 @@ def _split_into_words(sentence):
     Returns:
       List of words and punctuation marks in `sentence`.
     """
-    pat = re.compile(r"""   
-            ['"]?[-A-Za-z0-9@#$%^&*()'~=+_-]+['"]?  # letters, optionally quoted
+    pat = re.compile(r"""
+            ['"]?[-A-Za-z0-9@#$%^&*()'~=+_-]+['"]? # letters, optionally quoted
+            |
+            ,                      # comma
             |
             \.{3}                  # ellipsis
             |
-            [.?!]                  # punctuation
+            [.?!]                  # other punctuation
             """, re.VERBOSE)
     return pat.findall(sentence)
+    return [sent[0] for sent in pat.findall(sentence)]
 
 
 def main(args):
