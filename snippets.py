@@ -13,6 +13,8 @@ OPINION_INDICATORS = set("""
 
 PUNCTUATION = set(('.', '?', '!', '...')) #TODO: use this
 
+#TODO: pull of RE for sentences/words
+
 OPENTAG, CLOSETAG = '[[HIGHLIGHT]]', '[[ENDHIGHLIGHT]]'
 
 INFINITY = float('infinity')
@@ -186,8 +188,8 @@ def _join_words(words):
 
 def _split_into_sentences(doc):
     doc = re.sub(r'\s+', ' ', doc)
-    pat = re.compile(r"""[A-Za-z '"]+[.?!]""")
-    sentences = [sent.strip() for sent in pat.findall(doc)]
+    pat = re.compile(r"""([A-Za-z '"]+(\.{3}|[.?!]))""")
+    sentences = [sent[0].strip() for sent in pat.findall(doc)]
 
     # Return the doc itself as the sentence if there are no matches so that
     # a document without punctuation will be considered a single sentence.
