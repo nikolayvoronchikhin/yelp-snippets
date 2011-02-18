@@ -182,6 +182,12 @@ class TestSplitIntoSentences(object):
         sentences = snippets._split_into_sentences(doc) 
         assert sentences == ['I am tired.', 'Go away.']
 
+    def test_dollar_sign(self):
+        doc = 'I paid $2.34 for it.'
+        sentences = snippets._split_into_sentences(doc)
+        print sentences
+        assert sentences == ['I paid $2.34 for it.']
+
     def test_no_punctuation(self):
         doc = 'I want some Thai food'
         sentences = snippets._split_into_sentences(doc)
