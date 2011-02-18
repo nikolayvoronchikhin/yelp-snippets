@@ -13,6 +13,7 @@ class TestFullMatch(object):
         snippet = snippets.highlight_doc(doc, query)
         assert snippet == '[[HIGHLIGHT]]pepperoni pizza[[ENDHIGHLIGHT]]'
 
+
 class TestSingleSentence(object):
     def test_single_word_query(self):
         doc = 'I really love deep dish pizza.'
@@ -75,25 +76,26 @@ class TestMaxChars(object):
 
 
 class TestMaxSents(object):
-    #TODO
-    pass
+    def test_one(self):
+        doc = 'I love pepperoni. Pepperoni. Pepperoni.'
+        query = 'pepperoni'
+        snippet = snippets.highlight_doc(doc, query, max_sents=1)
+        assert snippet.count('.') == 1
+
+    def test_two(self):
+        doc = 'I love pepperoni. Pepperoni. Pepperoni.'
+        query = 'pepperoni'
+        snippet = snippets.highlight_doc(doc, query, max_sents=2)
+        assert snippet.count('.') == 2
+
 
 class TestMaxCharsAndSents(object):
-    #TODO
-    pass
+    def test(self):
+        doc = 'Dog! Cat! The sentence with rat is too long.'
+        query = 'rat'
+        snippet = snippets.highlight_doc(doc, query, max_chars=10, max_sents=1)
+        assert snippet in 'Dog!', 'Cat!'
 
-class TestOpinionRanking(object):
-    #TODO
-    pass
-
-class TestQueryRanking(object):
-    #TODO
-    pass
-
-class TestMixedRanking(object):
-    #TODO
-    pass
-    
 
 #
 # Testing "private" functions
@@ -130,8 +132,6 @@ class TestFindQuerySpans(object):
         spans = snippets._find_query_spans(words, query)
         assert spans == [(0, 1), (4, 6), (7, 10)]
 
-
-#TODO: main, _find_query_spans(words, query), _compute_query_match_score(sentence, query), _score_sentence(sentence, query), _count_opinion_indicators(sentence), _rank_sentences(sentences, query_words), _select_snippet_sentences(TONS), _insert_highlights(TONS)
 
 #
 # Testing "private" string-utility functions
@@ -258,6 +258,7 @@ class TestSplitIntoWords(object):
         sentence = 'It costs .47.'
         words = snippets._split_into_words(sentence)
         assert words == ['It', 'costs', '.47', '.']
+
 
 class TestJoinWords(object):
     def test_simple(self):
