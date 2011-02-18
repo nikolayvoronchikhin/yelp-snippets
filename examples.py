@@ -5,16 +5,14 @@
 
 import sys
 
-from snippets import highlight_doc as hd, INFINITY
+from snippets import highlight_doc, INFINITY
 
 DATA = [
-    # Single Sentence
     ('Queries are case-insensitive.',
      'I like pIzZa.', 
      'PiZzA', 
      INFINITY, INFINITY
     ),
-    
 
     ('The longest span possible is highlighted.',
      'I like pepperoni pizza.', 
@@ -28,7 +26,6 @@ DATA = [
      INFINITY, INFINITY
     ),
 
-    # Multiple Sentences
     ('Only sentences with query words or "opinion words" are included.',
      "I love their pesto. It's amazing! This sentence is pointless.",
      'pesto',
@@ -73,14 +70,12 @@ DATA = [
      'pizza',
      5, INFINITY
     ),
-    
-
 ]
 
 def print_examples(out=sys.stdout):
     """Print examples of the snippet creation to `out`."""
     for (description, doc, query, chars, sents) in DATA:
-        snippet = hd(doc, query, chars, sents)
+        snippet = highlight_doc(doc, query, chars, sents)
         print >> out, '#### %s ####' % description
         print >> out, 'DOCUMENT: """%s"""' % doc
         print >> out, 'QUERY:    """%s"""' % query
