@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
+from optparse import OptionParser
 import re
+import sys
 
 OPINION_INDICATORS = set("""
     nice good better best beautiful great delicious favorite wonderful friendly 
@@ -189,13 +191,44 @@ def _split_into_words(sentence):
     return pat.findall(sentence)
 
 
-def main():
-    doc = """I really love deep dish pizza. They have good salads too. But the 
-             dish pizza is incredible. Great pizza."""
-    query = 'deep dish pizza'
-    highlighted = highlight_doc(doc, query)
-    print highlighted
+def main(args):
+    """Command-line interface to snippet maker.
+    
+    The first positional argument is a document and the second is a query. The
+    program prints out a snippet from the document with all occurrences of the
+    query enclosed in HIGHLIGHT tags. Both full and query matches are
+    highlighted. For example, for the query 'deep dish pizza' occurrences of the    strings 'deep dish pizza', 'deep dish', 'dish pizza', 'deep', 'dish', 
+    'pizza' would all be highlighted. In each case, only the longest match
+    is highlighted.
+
+    The maximum number of characters or sentences to be included in the snippet
+    can be specified using the --chars and --sents options.
+    """
+
+    description = 'Command-line interface to the snippet maker.'
+    usage = '%prog <DOCUMENT> <QUERY_STRING> [options]'
+    parser = OptionParser(usage=usage, description=description)
+
+    parser.add_option('-c', '--chars', dest='max_chars', default=INFINITY,
+        help='The maximum number of characters to include in the snippet.')
+
+    parser.add_option('-s', '--sents', dest='max_sents', default=INFINITY,
+        help='The maximum number of sentences to include in the snippet.')
+
+
+    options, args = parser.parse_args(args)
+
+    if len(args) != 2:
+        parser.error('Incorrect number of arguments.')
+    doc = args[0]
+    query = args[1]
+
+    snippet = highlight_doc(doc, query, options.max_chars, options.max_sents)
+    print snippet
+
+    return 0
+
 
 if __name__ == '__main__':
-    main()
+    exit(main(sys.argv[1:]))
 
