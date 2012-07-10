@@ -1,5 +1,12 @@
-YELP REVIEW SNIPPET MAKER
+Yelp Review Snippet Maker
 =========================
+
+This is code I wrote in February, 2011 for the Yelp code test. The snippet
+generation code takes in a review, a query string, and optionally the maximum
+number of characters or sentences to include in the snippet. It uses some
+simple heuristics to identify the best snippet and highlights the query terms in
+the snippet.
+
 
 Quickstart
 ----------
@@ -57,10 +64,10 @@ the presence of opinion-indicating words like "love", "amazing", "disgusting",
 etc.. A point is added to a sentence's score for each of these words that it
 contains. 
 
-This single keyword based approach is really simplstic. At first I thought it
+This single keyword based approach is really simplistic. At first I thought it
 would be fun to really go all out here by thinking about what makes a good
 review sentence. In addition to opinion words it's possible that reviewers tend
-to use certain particular stylistic or linguistic features. Some of those 
+to use particular stylistic or linguistic features. Some of those 
 regularities could be captured with regular expressions, but it'd probably help
 to have a good POS tagger and possibly some sort of parser. So I thought I'd 
 wait until later and see how much NLTK would help here. 
